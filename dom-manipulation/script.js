@@ -128,6 +128,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
   newQuoteButton.addEventListener('click',showRandomQuote);
   createForm();
+  document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
+
 
   // restore last shown quote if it exists
   const lastQuote = sessionStorage.getItem("lastQuote");
