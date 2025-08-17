@@ -112,7 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let q of quotes) {
       await syncQuoteToServer(q);
     }
-    console.log("✅ Sync complete (local ↔ server)");
+    console.log("Quotes synced with server!");
+    alert("Quotes synced with server!");
   }
 
   // ---- EVENT LISTENERS ----
