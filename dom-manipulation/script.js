@@ -1,114 +1,128 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Load quotes from localStorage or use defaults
+  // ---- QUOTES ARRAY ----
   let quotes = JSON.parse(localStorage.getItem("quotes")) || [
     { text: "The best way to get started is to quit talking and begin doing.", category: "Motivation" },
     { text: "Don’t let yesterday take up too much of today.", category: "Inspiration" },
     { text: "It’s not whether you get knocked down, it’s whether you get up.", category: "Perseverance" },
   ];
 
-  const quoteDisplay = document.getElementById('quoteDisplay');
-  const newQuoteButton = document.getElementById('newQuote');
-  const formContainer = document.getElementById('form-container');
+  const quoteDisplay = document.getElementById("quoteDisplay");
+  const newQuoteButton = document.getElementById("newQuote");
 
-  // Save quotes to localStorage
+  // ---- SHOW RANDOM QUOTE ----
+  function showRandomQuote() {
+    const randomIndexQuote = Math.floor(Math.random() * quotes.length);
+    const randomQuote = quotes[randomIndexQuote];
+    quoteDisplay.innerHTML = `<p><strong>Quote:</strong> ${randomQuote.text}</p><p><em>Category:</em> ${randomQuote.category}</p>`;
+    sessionStorage.setItem("lastViewedQuote", JSON.stringify(randomQuote)); // session storage
+  }
+
+  // ---- SAVE QUOTES TO LOCAL STORAGE ----
   function saveQuotes() {
     localStorage.setItem("quotes", JSON.stringify(quotes));
   }
 
-  // Show random quote
-  function showRandomQuote() {
-    const randomIndexQuote = Math.floor(Math.random() * quotes.length);
-    const randomQuote = quotes[randomIndexQuote];
-    quoteDisplay.innerHTML = `<p><strong>Quote:</strong> ${randomQuote.text}</p>
-                              <p><em>Category:</em> ${randomQuote.category}</p>`;
-    sessionStorage.setItem("lastQuote", JSON.stringify(randomQuote));
-  }
-
-  // Add a new quote
+  // ---- ADD NEW QUOTE ----
   function createAddQuoteForm() {
-    const newQouteText = document.getElementById('newQouteText').value.trim();
-    const newQuoteCategory = document.getElementById('newQuoteCategory').value.trim();
+    const newQouteText = document.getElementById("newQouteText").value.trim();
+    const newQuoteCategory = document.getElementById("newQuoteCategory").value.trim();
 
     if (newQouteText !== "" && newQuoteCategory !== "") {
-      const newQuoteObj = { text: newQouteText, category: newQuoteCategory };
-      quotes.push(newQuoteObj);
+      const newQuote = { text: newQouteText, category: newQuoteCategory };
+      quotes.push(newQuote);
       saveQuotes();
-      alert("Quote added!");
-
-      // ---- ALSO sync new quote to server ----
-      syncQuoteToServer(newQuoteObj);
+      syncQuoteToServer(newQuote); // send new quote to server
     }
   }
 
-  // Create form dynamically
+  // ---- CREATE FORM ----
   function createForm() {
-    let inputText = document.createElement('input');
+    let form = document.getElementById("form-container");
+
+    let inputText = document.createElement("input");
     inputText.id = "newQouteText";
     inputText.type = "text";
     inputText.placeholder = "Enter a new quote";
-    formContainer.appendChild(inputText);
+    form.appendChild(inputText);
 
-    let newCategory = document.createElement('input');
+    let newCategory = document.createElement("input");
     newCategory.id = "newQuoteCategory";
     newCategory.type = "text";
     newCategory.placeholder = "Enter quote category";
-    formContainer.appendChild(newCategory);
+    form.appendChild(newCategory);
 
-    let addQuoteButton = document.createElement('button');
+    let addQuoteButton = document.createElement("button");
     addQuoteButton.textContent = "Add Quote";
     addQuoteButton.onclick = createAddQuoteForm;
-    formContainer.appendChild(addQuoteButton);
+    form.appendChild(addQuoteButton);
   }
 
-  // -------- SERVER SYNCING --------
+  // ---- EXPORT QUOTES ----
+  function exportQuotes() {
+    const blob = new Blob([JSON.stringify(quotes, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "quotes.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---- IMPORT QUOTES ----
+  function importFromJsonFile(event) {
+    const fileReader = new FileReader();
+    fileReader.onload = function (event) {
+      const importedQuotes = JSON.parse(event.target.result);
+      quotes.push(...importedQuotes);
+      saveQuotes();
+      alert("Quotes imported successfully!");
+    };
+    fileReader.readAsText(event.target.files[0]);
+  }
+
+  // ---- FETCH QUOTES FROM SERVER (GET) ----
   async function fetchQuotesFromServer() {
     try {
-      const response = await fetch("https://jsonplaceholder.typicode.com/posts?_limit=5");
-      const serverData = await response.json();
-
-      const serverQuotes = serverData.map(item => ({
-        text: item.title,
-        category: "Server"
-      }));
-
-      quotes = [...quotes, ...serverQuotes];
-      saveQuotes();
-
-      console.log("Quotes synced from server:", serverQuotes);
+      let response = await fetch("https://jsonplaceholder.typicode.com/posts");
+      let data = await response.json();
+      console.log("Fetched from server:", data.slice(0, 3)); // just show first 3 for testing
     } catch (error) {
       console.error("Error fetching from server:", error);
     }
   }
 
-  // ---- POST new quote to server ----
-  async function syncQuoteToServer(quoteObj) {
+  // ---- SYNC NEW QUOTE TO SERVER (POST) ----
+  async function syncQuoteToServer(quote) {
     try {
-      const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+      let response = await fetch("https://jsonplaceholder.typicode.com/posts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(quoteObj)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(quote),
       });
-
-      const result = await response.json();
-      console.log("Quote sent to server:", result);
+      let data = await response.json();
+      console.log("Synced to server:", data);
     } catch (error) {
       console.error("Error syncing to server:", error);
     }
   }
 
-  // Periodic fetch every 30s
-  setInterval(fetchQuotesFromServer, 30000);
+  // ---- FULL SYNC (FETCH + PUSH ALL) ----
+  async function syncQuotes() {
+    await fetchQuotesFromServer();
+    for (let q of quotes) {
+      await syncQuoteToServer(q);
+    }
+    console.log("✅ Sync complete (local ↔ server)");
+  }
 
-  // -------- EVENTS --------
-  newQuoteButton.addEventListener('click', showRandomQuote);
+  // ---- EVENT LISTENERS ----
+  newQuoteButton.addEventListener("click", showRandomQuote);
+  document.getElementById("exportQuotes").addEventListener("click", exportQuotes);
+  document.getElementById("importFile").addEventListener("change", importFromJsonFile);
+  document.getElementById("syncQuotesBtn").addEventListener("click", syncQuotes);
+
   createForm();
 
-  const lastQuote = sessionStorage.getItem("lastQuote");
-  if (lastQuote) {
-    const parsedQuote = JSON.parse(lastQuote);
-    quoteDisplay.innerHTML = `<p><strong>Quote:</strong> ${parsedQuote.text}</p>
-                              <p><em>Category:</em> ${parsedQuote.category}</p>`;
-  }
+  // ---- AUTO-SYNC EVERY 30 SECONDS ----
+  setInterval(syncQuotes, 30000);
 });
