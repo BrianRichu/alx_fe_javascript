@@ -27,7 +27,7 @@ function showRandomQuote() {
 
 
 // function to allow users to add their quotes
-function addQuote(){
+function createAddQuoteForm(){
   const newQouteText = document.getElementById('newQuoteText').value.trim();
   const newQuoteCategory = document.getElementById('newQuoteCategory').value.trim();
 
