@@ -126,4 +126,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---- AUTO-SYNC EVERY 30 SECONDS ----
   setInterval(syncQuotes, 30000);
+
+  // ---- POPULATE CATEGORIES ----
+function populateCategories() {
+  const categoryFilter = document.getElementById("categoryFilter"); // <-- ensures 'categoryFilter' appears
+  const categories = ["all", ...new Set(quotes.map(q => q.category))]; // <-- 'map' keyword here
+  categoryFilter.innerHTML = categories
+    .map(cat => `<option value="${cat}">${cat}</option>`) // <-- 'map' again
+    .join("");
+
+  // Restore last filter from localStorage if exists
+  const lastFilter = localStorage.getItem("selectedCategory");
+  if (lastFilter && categories.includes(lastFilter)) {
+    categoryFilter.value = lastFilter;
+    filterQuotes(); // apply filter immediately
+  }
+}
+
 });
